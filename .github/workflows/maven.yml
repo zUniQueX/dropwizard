@@ -28,7 +28,7 @@ jobs:
         distribution: 'temurin'
         java-version: ${{ matrix.java_version }}
     - name: Cache SonarCloud packages
-      uses: actions/cache@a7c34adf76222e77931dedbf4a45b2e4648ced19 # tag=v3.0.7
+      uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # tag=v3.2.4
       if: ${{ env.SONAR_TOKEN != null && env.SONAR_TOKEN != '' && matrix.java_version == '11' }}
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
