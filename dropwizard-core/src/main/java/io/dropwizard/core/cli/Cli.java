@@ -2,6 +2,7 @@ package io.dropwizard.core.cli;
 
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.util.JarLocation;
+import net.sourceforge.argparse4j.ArgumentParserBuilder;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.helper.HelpScreenException;
 import net.sourceforge.argparse4j.impl.Arguments;
@@ -17,10 +18,14 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -106,7 +111,8 @@ public class Cli {
 
     private ArgumentParser buildParser(JarLocation location) {
         final String usage = "java -jar " + location;
-        final ArgumentParser p = ArgumentParsers.newFor(usage).addHelp(false).build();
+        final ArgumentParserBuilder argumentParserBuilder = ArgumentParsers.newFor(usage).addHelp(false);
+        final ArgumentParser p = customizeArgumentParserBuilder(argumentParserBuilder).build();
         p.version(location.getVersion().orElse(
                 "No application version detected. Add a Implementation-Version " +
                         "entry to your JAR's manifest to enable this."));
@@ -115,6 +121,20 @@ public class Cli {
             .action(Arguments.help()) // never gets called; intercepted in #run
             .help("show the application version and exit");
         return p;
+    }
+
+    private ArgumentParserBuilder customizeArgumentParserBuilder(ArgumentParserBuilder argumentParserBuilder) {
+        ServiceLoader<ArgumentParserBuilderConfigurer> configurers = ServiceLoader.load(ArgumentParserBuilderConfigurer.class);
+        List<ArgumentParserBuilderConfigurer> sortedConfigurers = configurers
+            .stream()
+            .map(ServiceLoader.Provider::get)
+            .sorted(Comparator.comparingInt(ArgumentParserBuilderConfigurer::getPriority))
+            .collect(Collectors.toList());
+        ArgumentParserBuilder accumulator = argumentParserBuilder;
+        for (ArgumentParserBuilderConfigurer configurer : sortedConfigurers) {
+            accumulator = configurer.configure(accumulator);
+        }
+        return accumulator;
     }
 
     private void addHelp(ArgumentParser p) {
